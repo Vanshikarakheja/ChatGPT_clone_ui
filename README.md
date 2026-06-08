@@ -21,9 +21,9 @@ The application includes a **Chat Timeline** feature that records conversation p
 
 ## Technologies Used
 
-* Python
-* Streamlit
-* HTML/CSS (via Streamlit custom styling)
+Python Version: 3.13
+Framework: Streamlit
+HTML/CSS (via Streamlit custom styling)
 
 ## Future Enhancements
 
