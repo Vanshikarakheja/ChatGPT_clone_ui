@@ -1,168 +1,230 @@
 import streamlit as st
+import pandas as pd
 
 st.set_page_config(
-    page_title="ChatGPT Clone",
+    page_title="ChatGPT ",
     page_icon="🤖",
     layout="wide"
 )
 
-# -----------------------------
-# Custom CSS
-# -----------------------------
+# ==================================================
+# SESSION STATE
+# ==================================================
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+if "timeline" not in st.session_state:
+    st.session_state.timeline = []
+
+# ==================================================
+# CALCULATED ANALYTICS
+# ==================================================
+
+tokens_used = sum(
+    len(msg["content"].split())
+    for msg in st.session_state.messages
+)
+
+chat_depth = len(st.session_state.messages)
+
+confidence = min(75 + chat_depth, 99)
+
+productivity = min(60 + chat_depth * 2, 100)
+
+# ==================================================
+# CUSTOM CSS
+# ==================================================
+
 st.markdown("""
 <style>
 
-.stApp {
-    background-color: #212121;
-    color: white;
+.block-container{
+    padding-top:1.5rem;
+    padding-bottom:0rem;
+    padding-left:1rem;
+    padding-right:1rem;
 }
 
-section[data-testid="stSidebar"] {
-    background-color: #171717;
+.stApp{
+    background:linear-gradient(
+        135deg,
+        #0B1020,
+        #111827,
+        #0F172A
+    );
 }
 
-.chat-container {
-    max-width: 800px;
-    margin: auto;
+[data-testid="stSidebar"]{
+    background:#0F172A;
 }
 
-.user-msg {
-    background: #2f2f2f;
-    padding: 12px;
-    border-radius: 12px;
-    margin: 10px 0;
+.stButton > button{
+    width:100%;
+    height:52px;
+    border-radius:12px;
+    background:#1E293B;
+    color:white;
+    border:none;
 }
 
-.assistant-msg {
-    background: #303030;
-    padding: 12px;
-    border-radius: 12px;
-    margin: 10px 0;
+.stButton > button:hover{
+    background:#2563EB;
 }
 
-.big-title {
-    text-align: center;
-    font-size: 42px;
-    font-weight: bold;
-    margin-top: 40px;
+.metric-card{
+    background:#1E293B;
+    padding:8px;
+    border-radius:12px;
+    text-align:center;
 }
 
-.subtitle {
-    text-align: center;
-    color: #bbbbbb;
-    margin-bottom: 30px;
+.chat-title{
+    text-align:center;
+    font-size:42px;
+    font-weight:bold;
+    margin-bottom:0px;
 }
 
-.stButton > button {
-    width: 100%;
-    border-radius: 12px;
+.chat-subtitle{
+    text-align:center;
+    color:#94A3B8;
+    margin-top:0px;
+    margin-bottom:15px;
 }
 
 </style>
 """, unsafe_allow_html=True)
+# ==================================================
+# LAYOUT
+# ==================================================
 
-# -----------------------------
-# Session State
-# -----------------------------
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+left, center, right = st.columns([1.2,6,1.5])
 
-# -----------------------------
-# Sidebar
-# -----------------------------
-with st.sidebar:
+# ==================================================
+# LEFT PANEL
+# ==================================================
 
-    st.title("ChatGPT")
 
-    st.button("➕ New Chat")
+with left:
+
+    st.markdown("##  ChatGPT ")
+
+    st.button("➕ New Chat", key="new_chat")
+
+    st.text_input(
+        "Search",
+        placeholder="🔍 Search Chats",
+        label_visibility="collapsed"
+    )
 
     st.divider()
 
-    st.subheader("Recent Chats")
+    menu_items = [
+        "📚 Library",
+        "📁 Projects",
+        "⚡ Apps",
+        "💻 Codex",
+        "🖼 Images"
+    ]
 
-    st.button("Machine Learning")
-    st.button("Python Project")
-    st.button("Interview Prep")
-    st.button("Data Analysis")
+    for item in menu_items:
+        st.markdown(item)
 
     st.divider()
 
-    st.subheader("Tools")
+    st.markdown("### 📅 Recent")
 
-    st.button("📄 PDF Assistant")
-    st.button("🐍 Python Helper")
-    st.button("📊 Data Analyst")
-    st.button("🎓 Study Assistant")
+    if len(st.session_state.timeline) == 0:
+        st.caption("No chats yet")
+    else:
+        for chat in st.session_state.timeline[-2:]:
+            st.caption(f"🕒 {chat}")
 
-# -----------------------------
-# Main Screen
-# -----------------------------
+    st.divider()
 
-if len(st.session_state.messages) == 0:
+    st.button("⚙ Settings", key="settings")    
+with center:
 
-    st.markdown(
-        '<div class="big-title">ChatGPT</div>',
-        unsafe_allow_html=True
+    st.markdown("""
+    <div class='chat-title'>
+     ChatGPT 
+    </div>
+
+    <div class='chat-subtitle'>
+    Your AI Workspace
+    </div>
+    """, unsafe_allow_html=True)
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        st.button("🧠 Explain ML", key="ml")
+        st.button("📄 Summarize PDF", key="pdf")
+
+    with c2:
+        st.button("💻 Generate Code", key="code")
+        st.button("🎯 Interview Questions", key="interview")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    for msg in st.session_state.messages:
+
+        if msg["role"] == "user":
+            st.info(msg["content"])
+        else:
+            st.success(msg["content"])
+
+    prompt = st.text_input(
+        "Chat Input",
+        placeholder="Ask anything...",
+        label_visibility="collapsed"
     )
 
-    st.markdown(
-        '<div class="subtitle">How can I help you today?</div>',
-        unsafe_allow_html=True
-    )
+    if prompt:
 
-    col1, col2 = st.columns(2)
+        st.session_state.messages.append(
+            {
+                "role":"user",
+                "content":prompt
+            }
+        )
 
-    with col1:
-        if st.button("🧠 Explain Machine Learning"):
-            st.session_state.prompt = "Explain Machine Learning"
+        st.session_state.messages.append(
+            {
+                "role":"assistant",
+                "content":"This is a demo AI response."
+            }
+        )
 
-        if st.button("📄 Summarize a PDF"):
-            st.session_state.prompt = "Summarize a PDF"
+        st.session_state.timeline.append(prompt[:25])
 
-    with col2:
-        if st.button("💻 Generate Python Code"):
-            st.session_state.prompt = "Generate Python Code"
+        st.rerun()
 
-        if st.button("🎯 Interview Questions"):
-            st.session_state.prompt = "Interview Questions"
+# ==================================================
+# RIGHT PANEL
+# ==================================================
+with right:
 
-# -----------------------------
-# Chat History
-# -----------------------------
-for message in st.session_state.messages:
+    st.markdown("## 🚀 AI Dashboard")
 
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+    a, b = st.columns(2)
 
-# -----------------------------
-# Chat Input
-# -----------------------------
-prompt = st.text_input("Message ChatGPT")
+    with a:
+        st.metric("Conf", f"{confidence}%")
+        st.metric("Tokens", tokens_used)
 
-if prompt:
+    with b:
+        st.metric("Depth", chat_depth)
+        st.metric("Prod", f"{productivity}%")
 
-    st.session_state.messages.append(
-        {
-            "role": "user",
-            "content": prompt
-        }
-    )
+    st.markdown("### 🧠 Topic")
+    st.info("Machine Learning")
 
-    fake_response = f"""
-I received your message:
+    st.markdown("### 📈 Progress")
+    st.progress(80)
 
-**{prompt}**
-
-This is a sample AI response used for demonstrating the UI.
-
-You can replace this later with OpenAI, Groq, or any backend model.
-"""
-
-    st.session_state.messages.append(
-        {
-            "role": "assistant",
-            "content": fake_response
-        }
-    )
+    st.markdown("### 💡 Insight")
+    st.success("Learning-focused session")
 
     st.rerun()
